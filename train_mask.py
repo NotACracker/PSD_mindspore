@@ -43,8 +43,7 @@ def train(args):
     #data loader
     train_loader, val_loader, dataset = dataloader(
         cfg.dataset,
-        args.labeled_point,
-        args.val_area,
+        args,
         is_training=True,
         num_parallel_workers=8,
         shuffle=False

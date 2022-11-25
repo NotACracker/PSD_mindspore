@@ -308,17 +308,17 @@ def ms_map(batch_xyz, batch_features, batch_labels, batch_pc_idx, batch_cloud_id
            input_up_samples[0], input_up_samples[1], input_up_samples[2], input_up_samples[3], input_up_samples[4]
 
 
-def dataloader(dir, labeled_points, val_area, is_training, **kwargs):
-    dataset = S3DISDatasetGenerator(dir, labeled_points, val_area=val_area, is_training=is_training)
+def dataloader(dir, args, is_training, **kwargs):
+    dataset = S3DISDatasetGenerator(dir, args.labeled_points, val_area=args.val_area, is_training=is_training)
     cfg.ignored_label_inds = [dataset.label_to_idx[ign_label] for ign_label in dataset.ignored_labels]
     val_sampler = ActiveLearningSampler(
         dataset,
-        batch_size=cfg.val_batch_size,
+        batch_size=args.batch_size,
         split='validation'
     )
     train_sampler = ActiveLearningSampler(
         dataset,
-        batch_size=cfg.batch_size,
+        batch_size=args.batch_size,
         split='training'
     )
     return ds.GeneratorDataset(train_sampler, ["xyz", "colors", "labels", "q_idx", "c_idx"],
