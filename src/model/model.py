@@ -10,8 +10,8 @@ from mindspore import Tensor, context
 from mindspore.common.initializer import TruncatedNormal
 
 from pathlib import Path
-from dataset.dataset import ms_map, dataloader
-from utils.tools import ConfigS3DIS as cfg
+from src.data.dataset import ms_map, dataloader
+from src.utils.tools import ConfigS3DIS as cfg
 
 
 
@@ -23,7 +23,7 @@ class SharedMLP(nn.Cell):
         kernel_size=1,
         stride=1,
         transpose=False,
-        pad_mode='same',
+        pad_mode='valid',
         bn=False,
         activation_fn=None,
         bias = True
@@ -37,7 +37,7 @@ class SharedMLP(nn.Cell):
             out_channels,
             kernel_size,
             stride=stride,
-            pad_mode='valid',
+            pad_mode=pad_mode,
             has_bias=bias,
             weight_init=TruncatedNormal(sigma=1e-3)
         )

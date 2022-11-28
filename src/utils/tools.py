@@ -8,8 +8,8 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(BASE_DIR)
 sys.path.append(os.path.join(BASE_DIR, 'utils'))
 
-import cpp_wrappers.cpp_subsampling.grid_subsampling as cpp_subsampling
-import nearest_neighbors.lib.python.nearest_neighbors as nearest_neighbors
+import third_party.cpp_wrappers.cpp_subsampling.grid_subsampling as cpp_subsampling
+import third_party.nearest_neighbors.lib.python.nearest_neighbors as nearest_neighbors
 
 class ConfigS3DIS:
     dataset = Path('/home/ma-user/work/dataset/S3DIS/input_0.040') #dataset path

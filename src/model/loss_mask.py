@@ -13,9 +13,9 @@ from mindspore.ops import operations as op
 from mindspore.nn.loss.loss import LossBase
 
 
-from .model import PSDNet
-from dataset.dataset import ms_map, dataloader
-from utils.tools import ConfigS3DIS as cfg
+from src.model.model import PSDNet
+from src.data.dataset import ms_map, dataloader
+from src.utils.tools import ConfigS3DIS as cfg
 
 class WeightCEloss(LossBase):
     """weight ce loss"""

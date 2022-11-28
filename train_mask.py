@@ -13,11 +13,11 @@ from mindspore.train.callback import TimeMonitor, LossMonitor, ModelCheckpoint, 
 from mindspore.train.callback import SummaryCollector
 from mindspore.train.loss_scale_manager import DynamicLossScaleManager
 
-from dataset.dataset_mask import dataloader, ms_map
-from utils.tools import ConfigS3DIS as cfg
-from utils.logger import get_logger
-from model.model import PSDNet
-from model.loss_mask import PSDWithLoss, get_param_groups
+from src.data.dataset_mask import dataloader, ms_map
+from src.utils.tools import ConfigS3DIS as cfg
+from src.utils.logger import get_logger
+from src.model.model import PSDNet
+from src.model.loss_mask import PSDWithLoss, get_param_groups
 
 
 def prepare_network(weights, cfg, args):
@@ -125,7 +125,7 @@ def train(args):
 
     # callback for saving ckpt
     config_ckpt = CheckpointConfig(save_checkpoint_steps= cfg.train_steps, keep_checkpoint_max=100)
-    ckpt_cb = ModelCheckpoint(prefix='randla', directory=os.path.join(args.outputs_dir,'ckpt'), config=config_ckpt)
+    ckpt_cb = ModelCheckpoint(prefix='psd', directory=os.path.join(args.outputs_dir,'ckpt'), config=config_ckpt)
     cbs += [ckpt_cb]
     
     #summary collector

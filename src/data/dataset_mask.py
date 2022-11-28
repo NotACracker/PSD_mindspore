@@ -9,9 +9,9 @@ from mindspore import Tensor, context
 from mindspore import dtype as mstype
 import mindspore.ops as ops
 
-from utils.tools import ConfigS3DIS as cfg
-from utils.tools import DataProcessing as DP
-from utils.helper_ply import read_ply
+from src.utils.tools import ConfigS3DIS as cfg
+from src.utils.tools import DataProcessing as DP
+from src.utils.helper_ply import read_ply
 
 
 class S3DISDatasetGenerator:
@@ -287,21 +287,9 @@ def ms_map(batch_xyz, batch_features, batch_labels, batch_pc_idx, batch_cloud_id
         input_up_samples.append(up_i)
         batch_xyz = sub_points
 
-    #generate valid index for valid logits and labels selection for loss compute. due to the lack operator of mindspore.
-    # (B*N,)
-    labels = np.array(batch_labels).reshape(-1) # [b, n] --> [b*n]
-    ignore_mask = np.zeros_like(labels).astype(bool) # [b*n]
-    for ign_label in cfg.ignored_label_inds:
-        ignore_mask = np.logical_or(ignore_mask, np.equal(labels, ign_label))
-
-    # Collect logits and labels that are not ignored
-    valid_idx = np.where(np.logical_not(ignore_mask)) # [b*n]
-    valid_idx = np.array(valid_idx).astype(np.int32)
-    valid_idx = np.tile(valid_idx, (batch_features.shape[0], 1))
-
     # b_f:[B, N, 3+d]
     # due to the constraints of the mapping function, only the list elements can be passed back sequentially
-    return batch_features, batch_aug_features, batch_labels, valid_idx, batch_pc_idx, batch_cloud_idx, \
+    return batch_features, batch_aug_features, batch_labels, batch_pc_idx, batch_cloud_idx, \
            input_points[0], input_points[1], input_points[2], input_points[3], input_points[4], \
            input_neighbors[0], input_neighbors[1], input_neighbors[2], input_neighbors[3], input_neighbors[4], \
            input_pools[0], input_pools[1], input_pools[2], input_pools[3], input_pools[4], \
@@ -325,4 +313,3 @@ def dataloader(dir, args, is_training, **kwargs):
                                **kwargs), ds.GeneratorDataset(val_sampler,
                                                               ["xyz", "colors", "labels", "q_idx", "c_idx"],
                                                               **kwargs), dataset
-
