@@ -1,13 +1,25 @@
-import pickle, time, warnings
+# -*-coding:utf-8-*-
+# Copyright 2022 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
+
+import pickle
+import time
 import random
 
 import numpy as np
-from pathlib import Path
-
 import mindspore.dataset as ds
-from mindspore import Tensor, context
-from mindspore import dtype as mstype
-import mindspore.ops as ops
 
 from src.utils.tools import ConfigS3DIS as cfg
 from src.utils.tools import DataProcessing as DP
@@ -22,35 +34,33 @@ class S3DISDatasetGenerator:
         self.data_type = data_type
         if is_training:
             self.label_to_names = {0: 'ceiling',
-                                1: 'floor',
-                                2: 'wall',
-                                3: 'beam',
-                                4: 'column',
-                                5: 'window',
-                                6: 'door',
-                                7: 'table',
-                                8: 'chair',
-                                9: 'sofa',
-                                10: 'bookcase',
-                                11: 'board',
-                                12: 'clutter',
-                                13: 'unlabel'
-                                }
+                                   1: 'floor',
+                                   2: 'wall',
+                                   3: 'beam',
+                                   4: 'column',
+                                   5: 'window',
+                                   6: 'door',
+                                   7: 'table',
+                                   8: 'chair',
+                                   9: 'sofa',
+                                   10: 'bookcase',
+                                   11: 'board',
+                                   12: 'clutter',
+                                   13: 'unlabel'}
         else:
             self.label_to_names = {0: 'ceiling',
-                                1: 'floor',
-                                2: 'wall',
-                                3: 'beam',
-                                4: 'column',
-                                5: 'window',
-                                6: 'door',
-                                7: 'table',
-                                8: 'chair',
-                                9: 'sofa',
-                                10: 'bookcase',
-                                11: 'board',
-                                12: 'clutter',
-                                }
+                                   1: 'floor',
+                                   2: 'wall',
+                                   3: 'beam',
+                                   4: 'column',
+                                   5: 'window',
+                                   6: 'door',
+                                   7: 'table',
+                                   8: 'chair',
+                                   9: 'sofa',
+                                   10: 'bookcase',
+                                   11: 'board',
+                                   12: 'clutter'}
         self.num_classes = len(self.label_to_names)
         self.label_values = np.sort([k for k, v in self.label_to_names.items()])
         self.label_to_idx = {l: i for i, l in enumerate(self.label_values)}
@@ -167,7 +177,7 @@ class ActiveLearningSampler(ds.Sampler):
         # Random initialisation for weights
         self.possibility[split] = []
         self.min_possibility[split] = []
-        for i, tree in enumerate(self.dataset.input_colors[split]):
+        for _, tree in enumerate(self.dataset.input_colors[split]):
             self.possibility[split] += [np.random.rand(tree.data.shape[0]) * 1e-3]
             self.min_possibility[split] += [float(np.min(self.possibility[split][-1]))]
 
@@ -175,12 +185,13 @@ class ActiveLearningSampler(ds.Sampler):
         return self.spatially_regular_gen()
 
     def __len__(self):
-        return self.n_samples * self.batch_size  # not equal to the actual size of the dataset, but enable nice progress bars
+        # not equal to the actual size of the dataset, but enable nice progress bars
+        return self.n_samples * self.batch_size
 
     def spatially_regular_gen(self):
         # Choosing the least known point as center of a new cloud each time.
 
-        for i in range(self.n_samples * self.batch_size):  # num_per_epoch
+        for _ in range(self.n_samples * self.batch_size):  # num_per_epoch
             # t0 = time.time()
 
             # Generator loop
@@ -255,8 +266,8 @@ def data_aug(data):
         jittered_point = np.clip(sigma * np.random.randn(num_points, 3), -1 * clip, clip)
         jittered_point = np.tile(np.expand_dims(jittered_point, axis=0), [batch_size,1,1])
         data_xyz = data_xyz + jittered_point.astype(np.float32)
-    data_aug = np.concatenate([data_xyz, data_f],axis = -1) # [B, N, 6]
-    return data_aug.astype(np.float32)
+    aug_data = np.concatenate([data_xyz, data_f],axis = -1) # [B, N, 6]
+    return aug_data.astype(np.float32)
 
 
 def ms_map(batch_xyz, batch_features, batch_labels, batch_pc_idx, batch_cloud_idx, batchInfo):
@@ -287,21 +298,9 @@ def ms_map(batch_xyz, batch_features, batch_labels, batch_pc_idx, batch_cloud_id
         input_up_samples.append(up_i)
         batch_xyz = sub_points
 
-    #generate valid index for valid logits and labels selection for loss compute. due to the lack operator of mindspore.
-    # (B*N,)
-    labels = np.array(batch_labels).reshape(-1) # [b, n] --> [b*n]
-    ignore_mask = np.zeros_like(labels).astype(bool) # [b*n]
-    for ign_label in cfg.ignored_label_inds:
-        ignore_mask = np.logical_or(ignore_mask, np.equal(labels, ign_label))
-
-    # Collect logits and labels that are not ignored
-    valid_idx = np.where(np.logical_not(ignore_mask)) # [b*n]
-    valid_idx = np.array(valid_idx).astype(np.int32)
-    valid_idx = np.tile(valid_idx, (batch_features.shape[0], 1))
-
     # b_f:[B, N, 3+d]
     # due to the constraints of the mapping function, only the list elements can be passed back sequentially
-    return batch_features, batch_aug_features, batch_labels, valid_idx, batch_pc_idx, batch_cloud_idx, \
+    return batch_features, batch_aug_features, batch_labels, batch_pc_idx, batch_cloud_idx, \
            input_points[0], input_points[1], input_points[2], input_points[3], input_points[4], \
            input_neighbors[0], input_neighbors[1], input_neighbors[2], input_neighbors[3], input_neighbors[4], \
            input_pools[0], input_pools[1], input_pools[2], input_pools[3], input_pools[4], \
@@ -321,8 +320,5 @@ def dataloader(dir, args, is_training, **kwargs):
         batch_size=args.batch_size,
         split='training'
     )
-    return ds.GeneratorDataset(train_sampler, ["xyz", "colors", "labels", "q_idx", "c_idx"],
-                               **kwargs), ds.GeneratorDataset(val_sampler,
-                                                              ["xyz", "colors", "labels", "q_idx", "c_idx"],
-                                                              **kwargs), dataset
-
+    return ds.GeneratorDataset(train_sampler, ["xyz", "colors", "labels", "q_idx", "c_idx"], **kwargs),\
+           ds.GeneratorDataset(val_sampler,["xyz", "colors", "labels", "q_idx", "c_idx"], **kwargs), dataset

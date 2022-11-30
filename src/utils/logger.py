@@ -1,4 +1,5 @@
-# Copyright 2021 Huawei Technologies Co., Ltd
+# -*-coding:utf-8-*-
+# Copyright 2022 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
+# This file was copied from project [OpenHarmony][third_party_mindspore]
+
 """Custom Logger."""
 import logging
 import os
@@ -81,8 +84,3 @@ def get_logger(path, rank):
     logger = LOGGER('RandLa-net', rank)
     logger.setup_logging_file(path, rank)
     return logger
-
-
-if __name__ == '__main__':
-    logger = get_logger('../runs', 0)
-    logger.info('this is logger info')

@@ -1,32 +1,37 @@
-import numpy as np
-import mindspore as ms
+# -*-coding:utf-8-*-
+# Copyright 2022 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
+
 import mindspore.nn as nn
 import mindspore.ops as P
 import mindspore.numpy as msnp
-from mindspore.ops import composite as C
-from mindspore.ops import functional as F
-from mindspore.ops import operations as op
-from mindspore import Tensor, context
 from mindspore.common.initializer import TruncatedNormal
-
-from pathlib import Path
-from src.data.dataset import ms_map, dataloader
-from src.utils.tools import ConfigS3DIS as cfg
-
 
 
 class SharedMLP(nn.Cell):
     def __init__(
-        self,
-        in_channels,
-        out_channels,
-        kernel_size=1,
-        stride=1,
-        transpose=False,
-        pad_mode='valid',
-        bn=False,
-        activation_fn=None,
-        bias = True
+            self,
+            in_channels,
+            out_channels,
+            kernel_size=1,
+            stride=1,
+            transpose=False,
+            pad_mode='valid',
+            bn=False,
+            activation_fn=None,
+            bias=True
     ):
         super(SharedMLP, self).__init__()
 
@@ -41,23 +46,24 @@ class SharedMLP(nn.Cell):
             has_bias=bias,
             weight_init=TruncatedNormal(sigma=1e-3)
         )
-        self.batch_norm = nn.BatchNorm2d(out_channels, eps=1e-6, momentum=0.99) if bn else None
+        self.has_bn = bn
+        self.batch_norm = nn.BatchNorm2d(out_channels, eps=1e-6, momentum=0.99)
         self.activation_fn = activation_fn
 
-    def construct(self, input):
+    def construct(self, x):
         r"""
             construct method
 
             Parameters
             ----------
-            input: ms.Tensor, shape (B, d_in, N, K)
+            x: ms.Tensor, shape (B, d_in, N, K)
 
             Returns
             -------
             ms.Tensor, shape (B, d_out, N, K)
         """
-        x = self.conv(input)
-        if self.batch_norm:
+        x = self.conv(x)
+        if self.has_bn:
             x = self.batch_norm(x)
         if self.activation_fn:
             x = self.activation_fn(x)
@@ -65,7 +71,7 @@ class SharedMLP(nn.Cell):
 
 
 class LocalSpatialEncoding(nn.Cell):
-    def __init__(self, in_channel=10, out_channel=1, use_pos_encoding=True, bias = True):
+    def __init__(self, in_channel=10, out_channel=1, use_pos_encoding=True, bias=True):
         super(LocalSpatialEncoding, self).__init__()
 
         self.mlp = SharedMLP(in_channel, out_channel, bn=True, activation_fn=nn.LeakyReLU(0.2), bias=bias)
@@ -97,11 +103,11 @@ class LocalSpatialEncoding(nn.Cell):
             # idx(B, N, K), coords(B, N, 3)
             # neighbors[b, i, n, k] = coords[b, idx[b, n, k], i] = extended_coords[b, i, extended_idx[b, i, n, k], k]
             extended_idx = P.Tile()(idx.expand_dims(1), (1, 3, 1, 1))
-            extended_coords = P.Tile()(coords.transpose(0, 2, 1).expand_dims(-1), (1, 1, 1, idx.shape[-1]))
+            extended_coords = P.Tile()(coords.transpose(0, 2, 1).expand_dims(-1),
+                                       (1, 1, 1, idx.shape[-1]))
             neighbors = P.GatherD()(extended_coords, 2, extended_idx)  # shape (B, 3, N, K)
             relative_coords = extended_coords - neighbors
-            relative_dist = P.Sqrt()(P.Square()(relative_coords))
-            relative_dist = P.ReduceSum(keep_dims=True)(relative_dist, -3)  # shape (B, 1, N, K)
+            relative_dist = P.Sqrt()(P.ReduceSum(keep_dims=True)(P.Square()(relative_coords), -3))  # shape (B, 1, N, K)
             f_xyz = cat((
                 relative_dist,
                 relative_coords,
@@ -113,17 +119,18 @@ class LocalSpatialEncoding(nn.Cell):
 
         f_xyz = self.mlp(f_xyz)  # (B,8,N,K)
 
-        f_tile = P.Tile()(features, (1, 1, 1, idx.shape[-1]))  # (B, 8, N, 1) -> (B,8,N,K)
+        # (B, 8, N, 1) -> (B,8,N,K)
+        f_tile = P.Tile()(features, (1, 1, 1, idx.shape[-1]))
         extended_idx_for_feat = P.Tile()(idx.expand_dims(1), (1, f_xyz.shape[1], 1, 1))
         f_neighbours = P.GatherD()(f_tile, 2, extended_idx_for_feat)  # (B,8,N,K) -> (B,8,N,K)
 
-        f_concat = cat([f_xyz, f_neighbours])  # (B,8,N,K) & (B,8,N,K) -> (B,16,N,K)
+        # (B,8,N,K) & (B,8,N,K) -> (B,16,N,K)
+        f_concat = cat([f_xyz, f_neighbours])
 
         if self.use_pos_encoding:
             return f_xyz, f_concat
-        else:
-            return f_concat
 
+        return f_concat
 
 
 class AttentivePooling(nn.Cell):
@@ -134,7 +141,8 @@ class AttentivePooling(nn.Cell):
             nn.Dense(in_channels, in_channels, has_bias=False),
             nn.Softmax(-2)
         ])
-        self.mlp = SharedMLP(in_channels, out_channels, bn=True, activation_fn=nn.LeakyReLU(0.2), bias=bias)
+        self.mlp = SharedMLP(in_channels, out_channels, bn=True,
+                             activation_fn=nn.LeakyReLU(0.2), bias=bias)
 
     def construct(self, x):
         r"""
@@ -149,20 +157,18 @@ class AttentivePooling(nn.Cell):
             ms.Tensor, shape (B, d_out, N, 1)
         """
         # computing attention scores
-        scores = self.score_fn(x.transpose(0,2,3,1)).transpose(0,3,1,2)
+        scores = self.score_fn(x.transpose(0, 2, 3, 1)).transpose(0, 3, 1, 2)
 
         # sum over the neighbors
         features = scores * x
-        features = P.ReduceSum(keep_dims=True)(features, -1) # shape (B, d_in, N, 1)
+        features = P.ReduceSum(keep_dims=True)(features, -1)  # shape (B, d_in, N, 1)
 
         return self.mlp(features)
-
 
 
 class LocalFeatureAggregation(nn.Cell):
     def __init__(self, d_in, d_out, bias):
         super(LocalFeatureAggregation, self).__init__()
-
 
         self.mlp1 = SharedMLP(d_in, d_out//2, bn=True, activation_fn=nn.LeakyReLU(0.2), bias=bias)
         self.mlp2 = SharedMLP(d_out, 2*d_out, bn=True, bias=bias)
@@ -213,7 +219,7 @@ class PSDNet(nn.Cell):
         if is_training:
             self.aug_channel_attention = nn.Dense(d_in, 1, has_bias=False)
             self.softmax = nn.Softmax(axis=-1)
-        
+
         self.fc_start = nn.Dense(d_in, 8)
         self.bn_start = nn.SequentialCell([
             nn.BatchNorm2d(8, eps=1e-6, momentum=0.99),
@@ -253,7 +259,7 @@ class PSDNet(nn.Cell):
         self.fc2 = SharedMLP(64, 32, bn=True, activation_fn=nn.LeakyReLU(0.2), bias=bias)
         self.dp1 = nn.Dropout()
         self.fc_end = SharedMLP(32, num_classes, bias=bias)
-        
+
 
     def construct(self, xyz, feature, aug_feature, neighbor_idx, sub_idx, interp_idx):
         r"""
@@ -273,7 +279,7 @@ class PSDNet(nn.Cell):
             ms.Tensor, shape (B, num_classes, N)
                 segmentation scores for each point
         """
-        
+
         if self.is_training:
             aug_feature = self.data_aug(aug_feature)
             feature = P.Concat(0)([feature, aug_feature]) # [B, N, d] --> [2B, N, d]
@@ -281,7 +287,6 @@ class PSDNet(nn.Cell):
         feature = self.bn_start(feature) # shape (B, 8, N, 1)
 
         # <<<<<<<<<< ENCODER
-
         f_stack = []
         for i in range(5):
             # at iteration i, feature.shape = (B, d_layer, N_layer, 1)
@@ -292,13 +297,11 @@ class PSDNet(nn.Cell):
             if i == 0:
                 f_stack.append(f_encoder_i)
             f_stack.append(f_sampled_i)
-
         # # >>>>>>>>>> ENCODER
 
         feature = self.mlp(f_stack[-1]) # [B, d, N, 1]
 
         # <<<<<<<<<< DECODER
-        
         f_decoder_list = []
         for j in range(5):
             interp_idx_i = P.Concat(0)([interp_idx[-j-1], interp_idx[-j-1]]) if self.is_training else interp_idx[-j-1]
@@ -307,7 +310,6 @@ class PSDNet(nn.Cell):
             f_decoder_i = self.decoder[j](cat((f_stack[-j-2], f_interp_i)))
             feature = f_decoder_i
             f_decoder_list.append(f_decoder_i)
-
         # >>>>>>>>>> DECODER
 
         f_layer_fc1 = self.fc1(f_decoder_list[-1])
@@ -348,7 +350,7 @@ class PSDNet(nn.Cell):
         feature_out = feature_out.swapaxes(-2, -1).expand_dims(-1) # [B, 2d, N, 1]
         return feature_out, rs_mapf1, rs_mapf2
 
-    
+
     def data_aug(self, aug_feature):
         """
         :param aug_feature: [B, N, d] after spatial trans, before channel attention
@@ -358,30 +360,35 @@ class PSDNet(nn.Cell):
         att_scores = self.softmax(att_activation)
         aug_feature = msnp.multiply(aug_feature, att_scores)
         return aug_feature
-    
+
     def input_element(self, xyz, neigh_idx, sub_idx):
+        """
+        :param xyz, neigh_idx, sub_idx
+        :return: xyz, neigh_idx, sub_idx
+        """
         if self.is_training:
             xyz = P.Concat(0)([xyz, xyz])
             neigh_idx = P.Concat(0)([neigh_idx, neigh_idx])
             sub_idx = P.Concat(0)([sub_idx, sub_idx])
         return xyz, neigh_idx, sub_idx
-    
+
     @staticmethod
     def relative_get_feature(feature, neigh_idx):
         """
-        :param feature: [B, N, d] 
+        :param feature: [B, N, d]
         :parma neigh_idx = [B, N, k]
         :return: feature = [B, 2d, N, k]
         """
 
         neigh_idx = P.Tile()(neigh_idx.expand_dims(1), (1, feature.shape[-1], 1, 1)) # [B, N, K] --> [B, d, N, K]
-        feature = P.Tile()(feature.swapaxes(-2,-1).expand_dims(-1), (1, 1, 1, neigh_idx.shape[-1])) # [B, N, d] --> [B, d, N, K]
+        feature = P.Tile()(feature.swapaxes(-2,-1).expand_dims(-1),
+                           (1, 1, 1, neigh_idx.shape[-1])) # [B, N, d] --> [B, d, N, K]
         neighbors_feature = P.GatherD()(feature, 2, neigh_idx)  # [B, d, N, K]
         realtive_feature = feature - neighbors_feature
         realtive_feature = P.Concat(1)([realtive_feature, feature]) # [B, 2d, N, K]
 
         return realtive_feature
-    
+
     @staticmethod
     def random_sample(feature, pool_idx):
         """
@@ -400,4 +407,3 @@ class PSDNet(nn.Cell):
         pool_features = pool_features.reshape((b, d, n_, -1))
         pool_features = P.ReduceMax(keep_dims=True)(pool_features, -1) # [B, d, N', 1]
         return pool_features
-

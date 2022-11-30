@@ -1,15 +1,42 @@
 # Perturbed Self-Distillation: Weakly Supervised Large-Scale Point Cloud Semantic Segmentation
 
+# Contents
+
+- [PSD](#psd)
+    - [Model Architecture](#model-architecture)
+    - [Requirements](#requirements)
+        - [Install dependencies](#install-dependencies)
+    - [Dataset](#dataset)
+        - [Preparation](#preparation)
+        - [Directory structure of dataset](#directory-structure-of-dataset)
+    - [Quick Start](#quick-start)
+    - [Script Description](#script-description)
+        - [Scripts and Sample Code](#scripts-and-sample-code)
+        - [Script Parameter](#script-parameter)
+    - [Training](#training)
+        - [Training Process](#training-process)
+        - [Training Result](#training-result)
+    - [Evaluation](#evaluation)
+        - [Evaluation Process](#evaluation-process)
+        - [Evaluation Result 910](#evaluation-result-910)
+    - [Performance](#performance)
+        - [Training Performance](#training-performance)
+        - [Inference Performance](#inference-performance)
+        - [S3DIS Area 5](#s3dis-area-5)
+    - [Reference](#reference)
+
+# [PSD](#contents)
+
 Mindspore implementation for ***"Perturbed Self-Distillation: Weakly Supervised Large-Scale Point Cloud Semantic Segmentation"***
 
 Please read the [original paper](https://openaccess.thecvf.com/content/ICCV2021/papers/Zhang_Perturbed_Self-Distillation_Weakly_Supervised_Large-Scale_Point_Cloud_Semantic_Segmentation_ICCV_2021_paper.pdf)
 or [original tensorflow implementation](https://github.com/Yachao-Zhang/PSD) for more detailed information.
 
-## Model Architecture
+## [Model Architecture](#contents)
 
 ![PSD Framework](./figs/framework.png)
 
-## Requirements
+## [Requirements](#contents)
 
 - Hardware
     - For Ascend: Ascend 910.
@@ -24,14 +51,14 @@ or [original tensorflow implementation](https://github.com/Yachao-Zhang/PSD) for
     - scikit-learn==0.21.3
     - numpy==1.21.5
 
-### Install dependencies
+### [Install dependencies](#contents)
 
 1. `pip install -r requirements.txt`
 2. `cd third_party` & `bash compile_op.sh`
 
-## Dataset
+## [Dataset](#contents)
 
-### Preparation
+### [Preparation](#contents)
 
 1. Download S3DIS dataset from
    this [link](https://docs.google.com/forms/d/e/1FAIpQLScDimvNMCGhy_rmBA2gHfDu3naktRm6A8BPwAWWDv-Uhm6Shw/viewform?c=0&w=1)
@@ -40,7 +67,7 @@ or [original tensorflow implementation](https://github.com/Yachao-Zhang/PSD) for
 3. run `data_prepare_s3dis.py` (in `src/utils/data_prepare_s3dis.py`) to process data. The processed data will be stored
    in `input_0.040` and `original_ply` folders.
 
-### Directory structure of dataset
+### [Directory structure of dataset](#contents)
 
 ```html
 dataset
@@ -55,37 +82,39 @@ dataset
    └── Stanford3dDataset_v1.2_Aligned_Version
 ```
 
-## Quick Start
+## [Quick Start](#contents)
 
 For GPU:
 
 ```shell
-bash scripts/train_eval_s3dis_area5_gpu.sh
+bash scripts/train_s3dis_area5_gpu.sh
+bash scripts/eval_s3dis_area5_gpu.sh
 ```
 
 For Ascend:
 
 ```shell
-bash scripts/train_eval_s3dis_area5_ascend.sh
+bash scripts/train_s3dis_area5_ascend.sh
+bash scripts/eval_s3dis_area5_ascend.sh
 ```
 
-## Script Description
+## [Script Description](#contents)
 
-### Scripts and Sample Code
+### [Scripts and Sample Code](#contents)
 
 ```html
-RandLA
+PSD
 ├── scripts
-│   ├── train_eval_s3dis_area5_ascend.sh     # Train and Evaluate: S3DIS Area 5 on Ascend
-│   └── train_eval_s3dis_area5_gpu.sh        # Train and Evaluate: S3DIS dataset on GPU
+│   ├── eval_s3dis_area5_ascend.sh           # Evaluate: S3DIS Area 5 on Ascend
+│   ├── eval_s3dis_area5_gpu.sh              # Evaluate: S3DIS Area 5 on GPU
+│   ├── train_s3dis_area5_ascend.sh          # Train: S3DIS Area 5 on Ascend
+│   └── train_s3dis_area5_gpu.sh             # Train: S3DIS Area 5 on GPU
 ├── src
 |   ├── data                                 # class and functions for Mindspore dataset
-│   │   ├── dataset.py                       # dataset class for train
-│   │   └── dataset_mask.py                  # dataset class for train_mask
+│   │   └── dataset.py                  # dataset class for train
 │   ├── model                                # network architecture and loss function
 │   │   ├── model.py                         # network architecture
-│   │   ├── loss.py                          # loss function with gather logits and labels
-│   │   └── loss_mask.py                     # loss function with mask
+│   │   └── loss.py                          # loss function with mask
 │   └── utils
 │       ├── data_prepare_s3dis.py            # data processor for s3dis dataset
 │       ├── helper_ply.py                    # file utils
@@ -93,23 +122,22 @@ RandLA
 │       └── tools.py                         # DataProcessing and Config
 ├── third_party
 |   ├── cpp_wrappers                         # dependency for point cloud subsampling
+|   ├── meta                                 # meta information for data processor
 |   ├── nearest_neighbors                    # dependency for point cloud nearest_neighbors
-|   └── data_prepare_s3dis.py                # data processor for s3dis dataset
+|   └── compile_op.sh                        # shell for installing dependencies, including cpp_wrappers and nearest_neighbors
 |
-├── 6_fold_cv.py
+├── eval.py
 ├── README.md
-├── test.py
 ├── requirements.txt
-├── train.py
-├── train_mask.py
+└── train.py
 ```
 
-### Script Parameter
+### [Script Parameter](#contents)
 
-we use `train_eval_s3dis_area5_gpu.sh` as an example
+we use `train_s3dis_area5_gpu.sh` as an example
 
 ```shell
-python train_mask.py \
+python train.py \
   --epochs 100 \
   --batch_size 3 \
   --labeled_point 1% \
@@ -118,7 +146,7 @@ python train_mask.py \
   --device_target GPU \
   --device_id 0 \
   --outputs_dir ./runs \
-  --name randla_Area-5-gpu
+  --name psd_Area-5_1%-gpu
 ```
 
 The following table describes the arguments. Some default Arguments are defined in `src/utils/tools.py`. You can change freely as you want.
@@ -135,32 +163,32 @@ The following table describes the arguments. Some default Arguments are defined 
 | `--outputs_dir`      | where stores log and network weights  |
 | `--name`             | experiment name, which will combine with outputs_dir. The output files for current experiments will be stores in `outputs_dir/name`  |
 
-## Training
+## [Training](#contents)
 
-### Training Process
+### [Training Process](#contents)
 
 For GPU on S3DIS area 5:
 
 ```shell
-python train_mask.py --device_target GPU --device_id 0 --batch_size 3 --val_area 5 --labeled_point 1% --scale --name psd_mask_1%_Area-5-gpu --outputs_dir ./runs
+bash scripts/train_s3dis_area5_gpu.sh
 ```
 
 For Ascend on S3DIS area 5:
 
 ```shell
-python train_mask.py --device_target Ascend --device_id 0 --batch_size 3 --val_area 5 --labeled_point 1% --scale --name psd_mask_1%_Area-5-ascend --outputs_dir ./runs
+bash scripts/train_s3dis_area5_ascend.sh
 ```
 
-### Training Result
+### [Training Result](#contents)
 
-Using `bash scripts/train_eval_s3dis_area5_ascend.sh` as an example:
+Using `bash scripts/train_s3dis_area5_ascend.sh` as an example:
 
 Training results will be stored in `/runs/randla_Area-5-ascend` , which is determined
 by `{args.outputs_dir}/{args.name}/ckpt`. For example:
 
 ```html
 outputs
-├── psd_mask_1%_Area-5-ascend
+├── psd_Area-5_1%-ascend
     ├── 2022-10-24_time_11_23_40_rank_0.log
     └── ckpt
          ├── psd_1_500.ckpt
@@ -168,26 +196,26 @@ outputs
          └── ....
 ```
 
-## Evaluation
+## [Evaluation](#contents)
 
-### Evaluation Process GPU and 910
+### [Evaluation Process](#contents)
 
 For GPU on S3DIS area 5:
 
 ```shell
-python -B test.py --model_path runs/psd_mask_1%_Area-5-gpu --val_area 5 --device_id 0 --device_target GPU --batch_size 20
+bash scripts/eval_s3dis_area5_gpu.sh
 ```
 
 For Ascend on S3DIS area 5:
 
 ```shell
-python -B test.py --model_path runs/psd_mask_1%_Area-5-ascend --val_area 5 --device_id 0 --device_target Ascend --batch_size 20
+bash scripts/eval_s3dis_area5_ascend.sh
 ```
 
 Note: Before you start eval, please guarantee `--model_path` is equal to
 `{args.outputs_dir}/{args.name}` when training.
 
-### Evaluation Result 910
+### [Evaluation Result 910](#contents)
 
 ```shell
 Area_5_office_6 Acc:0.9115031868178718
@@ -204,13 +232,13 @@ Area_5_storage_4 Acc:0.793303764809178
 --------------------------------------------------------------------------------------
 ```
 
-## Performance
+## [Performance](#contents)
 
-### Training Performance
+### [Training Performance](#contents)
 
 | Parameters                 | Ascend 910                                                   | GPU (3090) |
 | -------------------------- | ------------------------------------------------------------ | ----------------------------------------------|
-| Model Version              | PSD_mask                                                     | PSD_mask                                      |
+| Model Version              | PSD                                                          | PSD                                           |
 | Resource                   | Ascend 910; CPU 2.60GHz, 24cores; Memory 96G; OS Euler2.8    | Nvidia GeForce RTX 3090                       |
 | uploaded Date              | 11/26/2022 (month/day/year)                                  | 11/26/2022 (month/day/year)                   |
 | MindSpore Version          | 1.7.0                                                        | 1.7.0                                         |
@@ -223,11 +251,11 @@ Area_5_storage_4 Acc:0.793303764809178
 | Total time                 | About 52 h 47 mins                                           | About 8 h 14 mins                             |
 | Checkpoint                 | 57.26 MB (.ckpt file)                                        | 57.26 MB (.ckpt file)                         |
 
-### Inference Performance
+### [Inference Performance](#contents)
 
 | Parameters          | Ascend                      |   GPU                      |
 | ------------------- | --------------------------- |--------------------------- |
-| Model Version       | PSD_mask                    | PSD_mask                 |
+| Model Version       | PSD                         | PSD                        |
 | Resource            | Ascend 910; OS Euler2.8     | Nvidia GeForce RTX 3090    |
 | Uploaded Date       | 11/26/2022 (month/day/year) | 11/26/2022 (month/day/year)|
 | MindSpore Version   | 1.7.0                       | 1.7.0                      |
@@ -236,13 +264,13 @@ Area_5_storage_4 Acc:0.793303764809178
 | outputs             | feature vector + probability| feature vector + probability  |
 | Accuracy            | See following tables        | See following tables       |
 
-### S3DIS Area 5 (1% setting)
+### [S3DIS Area 5](#contents)
 
-| Metric | Value(Tensorflow)|  Value(Mindspore, Ascend) |    Value(Mindspore, GPU)      |
-| :----: | :------------:   |  :-------------------: |       :-------------------:      |
-| mIoU |     62.0%          |         62.1%         |               60.7%               |
+| Metric | Setting   | Value(Tensorflow)|  Value(Mindspore, Ascend) |    Value(Mindspore, GPU)      |
+| :----: | :-----:   | :------------:   |  :-------------------: |       :-------------------:      |
+| mIoU   |    1%     |       62.0%      |         62.1%         |               60.9%               |
 
-## Reference
+## [Reference](#contents)
 
 Please kindly cite the original paper references in your publications if it helps your research:
 
