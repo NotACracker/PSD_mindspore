@@ -283,7 +283,7 @@ class PSDNet(nn.Cell):
         if self.is_training:
             aug_feature = self.data_aug(aug_feature)
             feature = P.Concat(0)([feature, aug_feature]) # [B, N, d] --> [2B, N, d]
-        feature = self.fc_start(feature).swapaxes(-2,-1).expand_dims(-1)
+        feature = self.fc_start(feature).swapaxes(-2, -1).expand_dims(-1)
         feature = self.bn_start(feature) # shape (B, 8, N, 1)
 
         # <<<<<<<<<< ENCODER
@@ -340,7 +340,7 @@ class PSDNet(nn.Cell):
         :parma neigh_idx = [B, N, k]
         :return: feature = [B, 2d, N, 1], rs_mapf1 = rs_mapf2 = [B, N ,d]
         """
-        feature_sq = feature.squeeze(-1).swapaxes(-2,-1) # [B, N, d]
+        feature_sq = feature.squeeze(-1).swapaxes(-2, -1) # [B, N, d]
         d_in = feature.shape[1]
         feature_rs1 = self.get_embedding(feature_sq, d_in, neigh_idx) # [B, N, d]
         rs_map_s1 = self.norm(feature_rs1)
@@ -381,7 +381,7 @@ class PSDNet(nn.Cell):
         """
 
         neigh_idx = P.Tile()(neigh_idx.expand_dims(1), (1, feature.shape[-1], 1, 1)) # [B, N, K] --> [B, d, N, K]
-        feature = P.Tile()(feature.swapaxes(-2,-1).expand_dims(-1),
+        feature = P.Tile()(feature.swapaxes(-2, -1).expand_dims(-1),
                            (1, 1, 1, neigh_idx.shape[-1])) # [B, N, d] --> [B, d, N, K]
         neighbors_feature = P.GatherD()(feature, 2, neigh_idx)  # [B, d, N, K]
         realtive_feature = feature - neighbors_feature

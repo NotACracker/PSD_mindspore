@@ -187,7 +187,7 @@ Training results will be stored in `/runs/randla_Area-5-ascend` , which is deter
 by `{args.outputs_dir}/{args.name}/ckpt`. For example:
 
 ```html
-outputs
+runs
 ├── psd_Area-5_1%-ascend
     ├── 2022-10-24_time_11_23_40_rank_0.log
     └── ckpt
@@ -218,17 +218,16 @@ Note: Before you start eval, please guarantee `--model_path` is equal to
 ### [Evaluation Result 910](#contents)
 
 ```shell
-Area_5_office_6 Acc:0.9115031868178718
-Area_5_office_7 Acc:0.9109614555866391
-Area_5_office_8 Acc:0.9307005329945797
-Area_5_office_9 Acc:0.9176830010623616
-Area_5_pantry_1 Acc:0.7367233236155645
-Area_5_storage_1 Acc:0.5244701058611868
-Area_5_storage_2 Acc:0.6102852880754686
-Area_5_storage_3 Acc:0.7138568287208468
-Area_5_storage_4 Acc:0.793303764809178
+Area_5_office_7 Acc:0.9041113067021165
+Area_5_office_8 Acc:0.9275495811539627
+Area_5_office_9 Acc:0.9148316688815217
+Area_5_pantry_1 Acc:0.7491346195167732
+Area_5_storage_1 Acc:0.548297892030687
+Area_5_storage_2 Acc:0.6088499408560052
+Area_5_storage_3 Acc:0.6915710558397612
+Area_5_storage_4 Acc:0.8207511533037065
 --------------------------------------------------------------------------------------
-62.13 | 91.49 97.67 80.84  0.00 20.02 60.45 53.17 75.09 83.07 71.33 68.04 56.68 49.86 
+62.60 | 91.18 97.17 80.25  0.00 25.34 61.63 42.77 74.73 84.01 69.02 69.27 67.84 50.60
 --------------------------------------------------------------------------------------
 ```
 
@@ -268,7 +267,7 @@ Area_5_storage_4 Acc:0.793303764809178
 
 | Metric | Setting   | Value(Tensorflow)|  Value(Mindspore, Ascend) |    Value(Mindspore, GPU)      |
 | :----: | :-----:   | :------------:   |  :-------------------: |       :-------------------:      |
-| mIoU   |    1%     |       62.0%      |         62.1%         |               60.9%               |
+| mIoU   |    1%     |       62.0%      |         62.6%         |               60.9%               |
 
 ## [Reference](#contents)
 

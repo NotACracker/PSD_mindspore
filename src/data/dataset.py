@@ -27,9 +27,9 @@ from src.utils.helper_ply import read_ply
 
 
 class S3DISDatasetGenerator:
-    def __init__(self, dir, labeled_points, data_type='ply', val_area=5, is_training=True):
-        self.path = dir
-        self.paths = list(dir.glob(f'*.{data_type}'))
+    def __init__(self, dataset_dir, labeled_points, data_type='ply', val_area=5, is_training=True):
+        self.path = dataset_dir
+        self.paths = list(dataset_dir.glob(f'*.{data_type}'))
         self.size = len(self.paths)
         self.data_type = data_type
         if is_training:
@@ -80,7 +80,7 @@ class S3DISDatasetGenerator:
         print('Size of validation : ', len(self.input_colors['validation']))
 
     def load_data(self):
-        for i, file_path in enumerate(self.paths):
+        for _, file_path in enumerate(self.paths):
             t0 = time.time()
             cloud_name = file_path.stem
             if self.val_area in cloud_name:
@@ -100,8 +100,8 @@ class S3DISDatasetGenerator:
             # when training, select labeled points to train, mask other points
             if cloud_split == 'training':
                 all_select_label_idx = []
-                for i in range(self.num_classes):
-                    ind_class = np.where(sub_labels == i)[0]
+                for class_i in range(self.num_classes):
+                    ind_class = np.where(sub_labels == class_i)[0]
                     class_point_cnt = len(ind_class)
                     if class_point_cnt > 0:
                         if '%' in self.labeled_points:
@@ -138,7 +138,7 @@ class S3DISDatasetGenerator:
 
         # Get validation and test reprojected indices
 
-        for i, file_path in enumerate(self.paths):
+        for _, file_path in enumerate(self.paths):
             t0 = time.time()
             cloud_name = file_path.stem
 
@@ -264,9 +264,9 @@ def data_aug(data):
         sigma = 0.01
         clip = 0.05
         jittered_point = np.clip(sigma * np.random.randn(num_points, 3), -1 * clip, clip)
-        jittered_point = np.tile(np.expand_dims(jittered_point, axis=0), [batch_size,1,1])
+        jittered_point = np.tile(np.expand_dims(jittered_point, axis=0), [batch_size, 1, 1])
         data_xyz = data_xyz + jittered_point.astype(np.float32)
-    aug_data = np.concatenate([data_xyz, data_f],axis = -1) # [B, N, 6]
+    aug_data = np.concatenate([data_xyz, data_f], axis=-1) # [B, N, 6]
     return aug_data.astype(np.float32)
 
 
@@ -307,8 +307,8 @@ def ms_map(batch_xyz, batch_features, batch_labels, batch_pc_idx, batch_cloud_id
            input_up_samples[0], input_up_samples[1], input_up_samples[2], input_up_samples[3], input_up_samples[4]
 
 
-def dataloader(dir, args, is_training, **kwargs):
-    dataset = S3DISDatasetGenerator(dir, args.labeled_points, val_area=args.val_area, is_training=is_training)
+def dataloader(data_dir, args, is_training, **kwargs):
+    dataset = S3DISDatasetGenerator(data_dir, args.labeled_point, val_area=args.val_area, is_training=is_training)
     cfg.ignored_label_inds = [dataset.label_to_idx[ign_label] for ign_label in dataset.ignored_labels]
     val_sampler = ActiveLearningSampler(
         dataset,
@@ -321,4 +321,4 @@ def dataloader(dir, args, is_training, **kwargs):
         split='training'
     )
     return ds.GeneratorDataset(train_sampler, ["xyz", "colors", "labels", "q_idx", "c_idx"], **kwargs),\
-           ds.GeneratorDataset(val_sampler,["xyz", "colors", "labels", "q_idx", "c_idx"], **kwargs), dataset
+           ds.GeneratorDataset(val_sampler, ["xyz", "colors", "labels", "q_idx", "c_idx"], **kwargs), dataset

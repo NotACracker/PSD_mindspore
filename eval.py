@@ -17,8 +17,8 @@
 import datetime
 import os
 import argparse
-import numpy as np
 from pathlib import Path
+import numpy as np
 from sklearn.metrics import confusion_matrix
 
 import mindspore as ms
@@ -52,12 +52,12 @@ def run_eval(args):
     _, val_ds, dataset = dataloader(
         cfg.dataset,
         args,
-        is_training = False,
+        is_training=False,
         num_parallel_workers=8,
         shuffle=False
     )
 
-    val_loader = val_ds.batch(batch_size = args.batch_size,
+    val_loader = val_ds.batch(batch_size=args.batch_size,
                               per_batch_map=ms_map,
                               input_columns=["xyz", "colors", "labels", "q_idx", "c_idx"],
                               output_columns=["features", "aug_features", "labels",
@@ -78,9 +78,9 @@ def run_eval(args):
     if not bias:
         network.to_float(ms.float16)
 
-    ckpt_path = Path(os.path.join(args.model_path,'ckpt'))
+    ckpt_path = Path(os.path.join(args.model_path, 'ckpt'))
     ckpts = ckpt_path.glob('*.ckpt')
-    ckpts = sorted(ckpts, key=lambda ckpt:ckpt.stem)
+    ckpts = sorted(ckpts, key=lambda ckpt: ckpt.stem)
     best_miou = 0.0
     best_ckpt = ckpts[0]
     best_names = []
@@ -100,28 +100,28 @@ def run_eval(args):
                 val_proportions[i] = np.sum([np.sum(labels == label_val) for labels in dataset.val_labels])
                 i += 1
         test_probs = [np.zeros(shape=[l.shape[0], cfg.num_classes], dtype=np.float32)
-                            for l in dataset.input_labels['validation']]
+                      for l in dataset.input_labels['validation']]
 
         # Smoothing parameter for votes
         test_smooth = 0.95
 
         logger.info('Current Best MIOU: {:.1f} . Best ckpt: {}'.format(100*best_miou, str(best_ckpt)))
         logger.info('==========begin test===============')
-        
+
         for step_i, data in enumerate(val_loader):
-            print('step:',str(step_i))
+            print('step:', str(step_i))
             features = data['features']
             aug_features = data['aug_features']
             labels = data['labels']
-            xyz = [data['p0'],data['p1'],data['p2'],data['p3'],data['p4']]
-            neigh_idx = [data['n0'],data['n1'],data['n2'],data['n3'],data['n4']]
-            sub_idx = [data['pl0'],data['pl1'],data['pl2'],data['pl3'],data['pl4']]
-            interp_idx = [data['u0'],data['u1'],data['u2'],data['u3'],data['u4']]
+            xyz = [data['p0'], data['p1'], data['p2'], data['p3'], data['p4']]
+            neigh_idx = [data['n0'], data['n1'], data['n2'], data['n3'], data['n4']]
+            sub_idx = [data['pl0'], data['pl1'], data['pl2'], data['pl3'], data['pl4']]
+            interp_idx = [data['u0'], data['u1'], data['u2'], data['u3'], data['u4']]
             point_idx = data['input_inds'].asnumpy()
             cloud_idx = data['cloud_inds'].asnumpy()
 
             logits, _, _ = network(xyz, features, aug_features, neigh_idx, sub_idx, interp_idx) # [b, num_classes, N]
-            logits = logits.swapaxes(-2,-1) #[b, num_classes, N] --> [b, N, num_classes]
+            logits = logits.swapaxes(-2, -1) #[b, num_classes, N] --> [b, N, num_classes]
             stacked_probs = ops.Softmax(-1)(logits).asnumpy()
             stacked_probs = np.reshape(stacked_probs, [args.batch_size, cfg.num_points, cfg.num_classes])
             for j in range(np.shape(stacked_probs)[0]):
@@ -256,14 +256,15 @@ if __name__ == "__main__":
 
     base_dir = os.path.dirname(os.path.abspath(__file__))
     arguments.model_path = os.path.join(base_dir, arguments.model_path)
-    
+
     # test output dir
     t = str(datetime.datetime.now().strftime('%Y-%m-%d_%H-%M'))
     arguments.outputs_dir = os.path.join(arguments.model_path, 'test_'+t)
     if not os.path.exists(arguments.outputs_dir):
         os.makedirs(arguments.outputs_dir)
     # val pred path
-    os.makedirs(os.path.join(arguments.outputs_dir, 'val_preds')) if not os.path.exists(os.path.join(arguments.outputs_dir, 'val_preds')) else None
-    
+    if not os.path.exists(os.path.join(arguments.outputs_dir, 'val_preds')):
+        os.makedirs(os.path.join(arguments.outputs_dir, 'val_preds'))
+
     # start test
     run_eval(arguments)

@@ -92,7 +92,6 @@ class CRLoss(LossBase):
         A_R = P.ReduceSum()(Afinite_hot * rs_map_soft, 1)
         loss_tjp = -1.0 * P.ReduceMean()(P.Log()(P.Div()(A_R, P.ReduceSum()(rs_map_soft, 1))))
         loss_tjr = -1.0 * P.ReduceMean()(P.Log()(P.Div()(A_R, P.ReduceSum()(Afinite_hot, 1))))
-        A_R_1 = P.ReduceSum()((1-Afinite_hot) * (1-rs_map_soft), 1)
 
         return loss_cr + loss_tjp + loss_tjr
 

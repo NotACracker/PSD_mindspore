@@ -35,7 +35,7 @@ from src.model.model import PSDNet
 from src.model.loss import PSDWithLoss, get_param_groups
 
 
-def prepare_network(weights, cfg, args):
+def prepare_network(weights, args):
     """Prepare Network"""
 
     d_in = 6
@@ -53,7 +53,7 @@ def train(args):
     logger = get_logger(args.outputs_dir, args.rank)
 
     for arg in vars(args):
-      logger.info('%s: %s', str(arg), str(getattr(args, arg)))
+        logger.info('%s: %s', str(arg), str(getattr(args, arg)))
 
     #data loader
     train_loader, _, _ = dataloader(
@@ -73,29 +73,29 @@ def train(args):
 
     logger.info('Done')
 
-    network = prepare_network(weights, cfg, args)
+    network = prepare_network(weights, args)
 
     decay_lr = nn.ExponentialDecayLR(cfg.learning_rate, cfg.lr_decays, decay_steps=cfg.train_steps, is_stair=True)
     opt = Adam(
-        params = get_param_groups(network),
-        learning_rate = decay_lr
+        params=get_param_groups(network),
+        learning_rate=decay_lr
     )
 
-    log = {'cur_epoch':1,'cur_step':1,'best_epoch':1,'besr_miou':0.0}
+    log = {'cur_epoch': 1, 'cur_step': 1, 'best_epoch': 1, 'besr_miou': 0.0}
     if not os.path.exists(args.outputs_dir + '/log.pkl'):
         f = open(args.outputs_dir + '/log.pkl', 'wb')
         pickle.dump(log, f)
         f.close()
 
-    train_loader = train_loader.batch(batch_size = args.batch_size,
+    train_loader = train_loader.batch(batch_size=args.batch_size,
                                       per_batch_map=ms_map,
-                                      input_columns=["xyz","colors","labels","q_idx","c_idx"],
-                                      output_columns=["features","aug_features","labels",
-                                                      "input_inds","cloud_inds",
-                                                      "p0","p1","p2","p3","p4",
-                                                      "n0","n1","n2","n3","n4",
-                                                      "pl0","pl1","pl2","pl3","pl4",
-                                                      "u0","u1","u2","u3","u4"],
+                                      input_columns=["xyz", "colors", "labels", "q_idx", "c_idx"],
+                                      output_columns=["features", "aug_features", "labels",
+                                                      "input_inds", "cloud_inds",
+                                                      "p0", "p1", "p2", "p3", "p4",
+                                                      "n0", "n1", "n2", "n3", "n4",
+                                                      "pl0", "pl1", "pl2", "pl3", "pl4",
+                                                      "u0", "u1", "u2", "u3", "u4"],
                                       drop_remainder=True)
 
     logger.info('==========begin training===============')
@@ -103,22 +103,20 @@ def train(args):
     #loss scale manager
     loss_scale_manager = DynamicLossScaleManager() if args.scale else None
 
-    amp_level = 'O0' if args.device_target=='GPU' else 'O3'
+    amp_level = 'O0' if args.device_target == 'GPU' else 'O3'
     if args.scale:
         model = Model(network,
                       loss_fn=None,
                       optimizer=opt,
                       amp_level=amp_level,
                       keep_batchnorm_fp32=True,
-                      loss_scale_manager=loss_scale_manager
-                    )
+                      loss_scale_manager=loss_scale_manager)
     else:
         model = Model(network,
                       loss_fn=None,
                       optimizer=opt,
                       amp_level=amp_level,
-                      kepp_batchnorm_fp32=True
-                    )
+                      kepp_batchnorm_fp32=True)
 
     # callback for loss & time cost
     loss_cb = LossMonitor(50)
@@ -126,8 +124,8 @@ def train(args):
     cbs = [loss_cb, time_cb]
 
     # callback for saving ckpt
-    config_ckpt = CheckpointConfig(save_checkpoint_steps= cfg.train_steps, keep_checkpoint_max=70)
-    ckpt_cb = ModelCheckpoint(prefix='psd', directory=os.path.join(args.outputs_dir,'ckpt'), config=config_ckpt)
+    config_ckpt = CheckpointConfig(save_checkpoint_steps=cfg.train_steps, keep_checkpoint_max=70)
+    ckpt_cb = ModelCheckpoint(prefix='psd', directory=os.path.join(args.outputs_dir, 'ckpt'), config=config_ckpt)
     cbs += [ckpt_cb]
 
     #summary collector
@@ -177,25 +175,11 @@ if __name__ == "__main__":
     if not os.path.exists(arguments.outputs_dir):
         os.makedirs(arguments.outputs_dir)
 
-    if arguments.resume:
-        arguments.outputs_dir = arguments.resume
-
     #copy file
-    shutil.copy('utils/tools.py', str(arguments.outputs_dir))
+    shutil.copy('src/utils/tools.py', str(arguments.outputs_dir))
     shutil.copy('train.py', str(arguments.outputs_dir))
-    shutil.copy('model/model.py', str(arguments.outputs_dir))
-    shutil.copy('model/loss.py', str(arguments.outputs_dir))
+    shutil.copy('src/model/model.py', str(arguments.outputs_dir))
+    shutil.copy('src/model/loss.py', str(arguments.outputs_dir))
 
     # start train
     train(arguments)
-
-
-
-
-
-
-    
-
-
-
-
